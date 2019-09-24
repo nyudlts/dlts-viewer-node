@@ -1,7 +1,9 @@
-# dlts-viewer-node
+# DLTS Viewer - Node
+
 DLTS Viewer dummy server for local development. Not production quality. Do not use for any other reason.
 
 ## Install 
+
 ``` 
 $ git clone https://github.com/nyudlts/dlts-viewer-node.git
 $ cd dlts-viewer-node
