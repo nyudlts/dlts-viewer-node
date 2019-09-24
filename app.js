@@ -5,7 +5,6 @@ const path = require('path');
 const logger = require('morgan');
 const env = require('env2')('./.env');
 const IIIFEndpoint = process.env.IIIF_ENDPOINT;
-
 const app = express();
 
 // view engine setup
@@ -16,72 +15,27 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-async function deliverResources(req, res, next) {
+app.get('*', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  
-  const url = require('url');
-  const url_parts = url.parse(req.url, true);
-  const query = url_parts.query;
-  const type = req.params.type;
-  
-  try {
-    const exists = fs.existsSync(`./public/resources/${type}.json`);
-    if (exists) {
-      const limit = (query.limit ) ? parseInt(query.limit, 10) : 15;
-      const start = (query.start) ? parseInt(query.start, 10) : 0;
-      console.log(`File exists. Using cached file ./public/resources/${type}.json`);
-      const data = JSON.parse(fs.readFileSync(`./public/resources/${type}.json`), 'utf8');
-      if (type === 'listBooks') {
-        res.json({
-          documents: data.response.slice(start, start + limit),
-          length: data.response.length,
-          start: start,
-          limit: limit,
-        });
-      }
-      else {
-        res.json(data.files.slice(start, limit));     
-      }
+  next();
+});
 
-    } else {
-      if (type === 'listBooks') {
-      }
-      if (type === 'books') {
-        const glob = require('glob');
-        const source = `./public/books/books/*.en.json`;            
-        glob(source, (error, files) => {
-          if (error) {
-            throw error;
-          }
-          else {
-            fs.writeFile(`./public/resources/${type}.json`, JSON.stringify({ files: files }), err => {
-              if (err) {
-                return console.log(err);
-              }
-              console.log(`File ./public/resources/${type}.json saved`);
-              res.json({ files: files }); 
-            });
-          }
-        });
-      } else {
-        throw new Error('Resources type not available.');
-      }
-    }
-  } catch (error) {
-  }
-}
+app.use('/iiif/2/*', (req, res, next) => {
+  const redirectTo = `${IIIFEndpoint}/${req.url}`;
+  console.log(`Redirect ${redirectTo}`);
+  res.redirect(301, redirectTo);
+});
 
-async function deliverResourceSequence(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
   const identifier = req.params.identifier;
   const sequence = parseInt(req.params.sequence, 10);
   const source = `./public/books/books/${identifier}.en.json`;
   try {
-    const exists = fs.existsSync(`./public/pages/${identifier}-${sequence}`);
+    const exists = fs.existsSync(`./public/pages/${identifier}-${sequence}.json`);
     if (exists) {
-      console.log(`File exists. Using cached file ${identifier}-${sequence}`);
+      console.log(`File exists. Using cached file ${identifier}-${sequence}.json`);
       res.json(
-        JSON.parse(fs.readFileSync(`./public/pages/${identifier}-${sequence}`), 'utf8')
+        JSON.parse(fs.readFileSync(`./public/pages/${identifier}-${sequence}.json`), 'utf8')
       );
     } 
     else {
@@ -92,46 +46,60 @@ async function deliverResourceSequence(req, res, next) {
       const index = find(page, { 'realPageNumber': sequence });
       const url = encodeURIComponent(index.cm.uri.replace('fileserver:/', 'http://dlib.nyu.edu/files'));
       const response = await axios.get(`${IIIFEndpoint}/${url}/info.json`);
-      fs.writeFile(`./public/pages/${req.params.identifier}-${sequence}`, JSON.stringify(response.data), err => {
+      fs.writeFile(`./public/pages/${req.params.identifier}-${sequence}.json`, JSON.stringify(response.data), err => {
         if (err) {
           return console.log(err);
         }
-        console.log(`File ./public/pages/${req.params.identifier}-${sequence} saved`);
+        console.log(`File ./public/pages/${req.params.identifier}-${sequence}.json saved`);
       });
       res.json(response.data);
     }
   } catch (error) {
-      console.log(error);
-      throw error;
-  }
-}
-
-app.use('/resource/:type/:identifier/:sequence/info.json', deliverResourceSequence);
-
-app.use('/resource/:type/:identifier', async (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  const source = `./public/books/books/${req.params.identifier}.en.json`;
-  try {
-    res.json(JSON.parse(fs.readFileSync(source, 'utf8')));
-  } catch (error) {
     console.log(error);
-    throw error;
+    next(createError(404));
   }
 });
 
-app.use('/resource/:type', deliverResources);
+app.use('/:type/:identifier', (req, res) => {
+  const source = `./public/books/books/${req.params.identifier}.en.json`;
+  try {
+    const data = fs.readFileSync(source, 'utf8');
+    const response = JSON.parse(data);
+    res.json(response);
+  } catch (error) {
+    console.log(error);
+    next(createError(404));
+  }
+});
 
-app.use('/iiif/2/:id', (req, res, next) => {
-  const redirectTo = `${IIIFEndpoint}/${req.url}`;
-  console.log(`Redirect ${redirectTo}`);
-  res.redirect(301, redirectTo);
+app.use('/:type', async (req, res, next) => {
+  const url = require('url');
+  const url_parts = url.parse(req.url, true);
+  const query = url_parts.query;
+  const type = req.params.type;
+  try {
+    const exists = fs.readFileSync(`./public/resources/${type}.json`);    
+    const limit = (query.limit) ? parseInt(query.limit, 10) : 15;
+    const start = (query.start) ? parseInt(query.start, 10) : 0;
+    const data = JSON.parse(exists, 'utf8');
+    if (data.response.length){
+      res.json({
+        documents: data.response.slice(start, start + limit),
+        length: data.response.length,
+        start: start,
+        limit: limit,
+      });  
+    } else {
+      throw `Error reading datasource ${type}.json`;
+    }
+  } catch (error) {
+    console.log(error);
+    next(createError(404));
+  }
 });
 
 app.use('/', (req, res, next) => {
-  const glob = require('glob');
-  glob('./public/books/books/*.en.json', (error, files) => {
-    res.render('index', { files: files });
-  });
+  res.render('index', {});
 });
 
 // catch 404 and forward to error handler
