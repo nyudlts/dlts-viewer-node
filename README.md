@@ -23,7 +23,7 @@ $ git clone https://github.com/NYULibraries/dlts_viewer_content.git books
 cp .env.example .env
 ```
 
-Here you have to Cantaloupe IIIF server endpoint. See .env.example
+Here you have to add Cantaloupe IIIF server endpoint. See .env.example
 
 ## Run the server
 ```
