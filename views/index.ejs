@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>DLTS Viewer: List of available books </title>
+    <meta name="description" content="DLTS Viewer">
+    <meta name="author" content="Alberto Ortiz Flores">
+  </head>
+  <body>
+    <div>
+      <ul>
+        <% files.forEach(function(file){ 
+            const bookIdentifier = file.split('/').reverse()[0].replace('.en.json', '')
+            %>
+          <li><a href="/books/<%= bookIdentifier %>"><%= bookIdentifier %></a></li>
+        <% }); %>
+      </ul>  
+    </div>    
+  </body>
+</html>
