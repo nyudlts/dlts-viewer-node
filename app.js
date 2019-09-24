@@ -3,8 +3,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const logger = require('morgan');
-const IIIFEndpoint = 'http://localhost:8182/iiif/2';
-// const IIIFEndpoint = 'http://3.215.124.212:8182/iiif/2';
+const env = require('env2')('./.env');
+const IIIFEndpoint = process.env.IIIF_ENDPOINT;
 
 const app = express();
 
@@ -122,7 +122,7 @@ app.use('/resource/:type/:identifier', async (req, res, next) => {
 app.use('/resource/:type', deliverResources);
 
 app.use('/iiif/2/:id', (req, res, next) => {
-  const redirectTo = `http://3.215.124.212:8182/iiif/2/${req.url}`;
+  const redirectTo = `${IIIFEndpoint}/${req.url}`;
   console.log(`Redirect ${redirectTo}`);
   res.redirect(301, redirectTo);
 });
