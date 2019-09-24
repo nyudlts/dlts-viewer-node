@@ -17,7 +17,19 @@ $ cd public
 $ git clone https://github.com/NYULibraries/dlts_viewer_content.git books
 ```
 
+## Add the environment file
+
+``` 
+cp .env.example .env
+```
+
+Here you have to add Cantaloupe IIIF server endpoint. See .env.example
+
 ## Run the server
 ```
 $ npm start
 ```
+
+### Requierments 
+
+Cantaloupe IIIF server - https://github.com/MITLibraries/docker-cantaloupe.git configured to use HttpSource.
