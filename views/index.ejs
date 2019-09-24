@@ -23,7 +23,7 @@
   <body>
     <div id="app" class="container-fluid"></div>
     <script>
-    Vue.use(BootstrapVue);    
+    Vue.use(BootstrapVue);
     const template = `
       <div class="main container">
       <div class="overflow-auto">
@@ -36,7 +36,7 @@
           </div>
         </template>
         <template v-slot:cell(entity_title)="data">
-          <router-link :to="data.item.source" replace>{{data.item.entity_title}}</router-link>
+          <a :href="data.item.source">{{data.item.entity_title}}</a>
         </template>
       </b-table>
         <b-pagination
