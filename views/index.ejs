@@ -68,7 +68,6 @@
           rows: 0,
           start: 0,
           limit: 25,
-          iiifendpoint: '/iiif/2',
           isBusy: true,
           items: [],
         };
@@ -101,8 +100,8 @@
             .catch((error) => {
               console.log(`Error! Could not reach the API. ${error}`);
             });
-          },
-        },      
+        },
+      },      
     });
     </script>
   </body>

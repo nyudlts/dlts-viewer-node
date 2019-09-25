@@ -78,10 +78,20 @@ app.use('/:type', async (req, res, next) => {
   const query = url_parts.query;
   const type = req.params.type;
   try {
-    const exists = fs.readFileSync(`./public/resources/${type}.json`);    
+    const exists = fs.readFileSync(`./public/resources/${type}.json`);
     const limit = (query.limit) ? parseInt(query.limit, 10) : 15;
     const start = (query.start) ? parseInt(query.start, 10) : 0;
     const data = JSON.parse(exists, 'utf8');
+
+    // const low = require('lowdb');
+    // const FileSync = require('lowdb/adapters/FileSync');
+    // const adapter = new FileSync(`./public/resources/${type}.json`);
+    // const db = low(adapter);
+    // const value = db.get('response')
+    //   .find({ identifier: 'aub_aco000001' })
+    //   .value();
+    // console.log(value, 'value');
+
     if (data.response.length){
       res.json({
         documents: data.response.slice(start, start + limit),
