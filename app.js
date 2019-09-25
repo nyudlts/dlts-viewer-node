@@ -99,7 +99,7 @@ app.use('/:type', async (req, res, next) => {
 });
 
 app.use('/', (req, res, next) => {
-  res.render('index', {});
+  res.render('index');
 });
 
 // catch 404 and forward to error handler

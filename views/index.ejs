@@ -6,12 +6,8 @@
     <meta name="description" content="DLTS Viewer">
     <meta name="author" content="Alberto Ortiz Flores">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- Load required Bootstrap and BootstrapVue CSS -->
     <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
     <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
-    <!-- Load polyfills to support older browsers -->
-    <script src="//polyfill.io/v3/polyfill.min.js?features=es2015%2CIntersectionObserver" crossorigin="anonymous"></script>
-    <!-- Load Vue followed by BootstrapVue -->
     <script src="//unpkg.com/vue@latest/dist/vue.min.js"></script>
     <script src="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
     <style>
@@ -24,69 +20,68 @@
     <div id="app" class="container-fluid"></div>
     <script>
     Vue.use(BootstrapVue);
-    const template = `
-      <div class="main container">
-      <div class="overflow-auto">
-      <h4>{{title}}</h4>
-      <b-table striped hover :busy.sync="isBusy" :items="items" :fields="fields" caption-top>
-        <template v-slot:table-busy>
-          <div class="text-center text-danger my-2">
-            <b-spinner class="align-middle"></b-spinner>
-            <strong>Loading...</strong>
-          </div>
-        </template>
-        <template v-slot:cell(entity_title)="data">
-          <a :href="data.item.source">{{data.item.entity_title}}</a>
-        </template>
-      </b-table>
-        <b-pagination
-          align="center"
-          use-router
-          v-model="currentPage"
-          :total-rows="rows"
-          :per-page="limit"
-          aria-controls="items"
-          @input="fetchBooks()"
-        ></b-pagination>
-      </div>
-      </div>
-    `;
-    new Vue({
+    const app = new Vue({
       el: '#app',
-      template: template,
-      mounted() {
-        this.fetchBooks();
-      },
+      name: 'home',
+      template: `
+      <div class="main container">
+        <div class="overflow-auto">
+          <h4>{{title}}</h4>
+          <br/>
+          <b-table striped hover :busy.sync="isBusy" :items="items" :fields="fields" caption-top>
+            <template v-slot:table-busy>
+              <div class="text-center my-2">
+                <b-spinner class="align-middle"></b-spinner>
+                <strong>Loading...</strong>
+              </div>
+            </template>
+            <template v-slot:cell(entity_title)="data">
+              <a :href="data.item.source">{{data.item.entity_title}}</a>
+            </template>
+          </b-table>
+          <b-pagination
+            align="center"
+            v-model="currentPage"
+            :total-rows="rows"
+            :per-page="limit"
+            aria-controls="items"
+            @input="fetchBooks"
+          ></b-pagination>
+        </div>
+      </div>
+      `,
       data() {
         return {
+          title: 'List of books',
           fields: [
             {
               key: 'entity_title',
               label: 'Title',
             },
             'identifier',
+            {
+              key: 'source',
+              label: 'Path',
+            },
           ],
           currentPage: 1,
-          start: 0,
           rows: 0,
-          limit: 10,
+          start: 0,
+          limit: 25,
           iiifendpoint: '/iiif/2',
-          region: 'full',
-          rotation: '0',
-          size: ',250',
-          title: 'List of books',
-          subtitle: 'Curated selection of books',
-          isBusy: false,
+          isBusy: true,
           items: [],
         };
+      },
+      mounted() {
+        this.fetchBooks();
       },
       methods: {
         fetchBooks() {
           this.isBusy = true;
           this.start = this.currentPage * this.limit;
           this.items = [];
-          const url = `/listBooks?start=${this.start}&limit=${this.limit}`;
-          fetch(url)
+          fetch(`/listBooks?start=${this.start}&limit=${this.limit}`)
             .then((response) => {
               if (response.ok) {
                 return response.json();
@@ -96,19 +91,19 @@
             .then((data) => {
               this.rows = parseInt(data.length, 10);
               data.documents.map((book) => {
-                const { image, identifier } = book;
-                const id = `http://dlib.nyu.edu/files/${image}`;
-                book.thumbnail = `${this.iiifendpoint}/${encodeURIComponent(id)}/${this.region}/${this.size}/${this.rotation}/default.jpg`;
-                book.source = `/book/${identifier}/1`;
+                const { identifier } = book;
+                book.source = `/book/${identifier}`;
                 return this.items.push(book);
               });
+            }).finally(() => {
               this.isBusy = false;
-            }).catch((error) => {
+            })
+            .catch((error) => {
               console.log(`Error! Could not reach the API. ${error}`);
             });
           },
-        },
-      });
+        },      
+    });
     </script>
   </body>
 </html>
