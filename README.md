@@ -7,7 +7,7 @@ DLTS Viewer dummy server for local development. Not production quality. Do not u
 ``` 
 $ git clone https://github.com/nyudlts/dlts-viewer-node.git
 $ cd dlts-viewer-node
-$ npm install
+$ yarn install
 ```
 
 ## Add content inside the public directory
@@ -25,9 +25,9 @@ cp .env.example .env
 
 Here you have to add Cantaloupe IIIF server endpoint. See .env.example
 
-## Run the server
+## Run the development server
 ```
-$ npm start
+$ yarn run dev
 ```
 
 ### Requierments 
