@@ -12,6 +12,8 @@ const IIIFEndpoint = process.env.IIIF_ENDPOINT;
 
 const IIIFApiVersion = process.env.IIIF_API_VERSION;
 
+const ViewerContentDirectory = process.env.VIEWER_CONTENT_DIRECTORY;
+
 const app = express();
 
 app.use(logger('dev'));
@@ -35,11 +37,17 @@ app.use('/iiif/2/*', (req, res, next) => {
 
 app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
 
-  const { language = 'en' } = req.query;
+  const { 
+    language = 'en'
+  } = req.query;
 
-  const { identifier, sequence, type } = req.params;
+  const {
+    identifier,
+    sequence,
+    type
+  } = req.params;
 
-  const source = `${__dirname}/../public/books/${type}/${identifier}.${language}.json`;
+  const source = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
 
   try {
     const exists = fs.existsSync(`./public/pages/${identifier}-${sequence}.json`);
@@ -85,8 +93,8 @@ app.use('/:type/:identifier', (req, res) => {
 
   const { identifier, type } = req.params;
 
-  const source = `./public/books/${type}/${identifier}.${language}.json`;
-  
+  const source = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
+
   const availableLanguages = {};
   
   const knownLanguages = {
@@ -105,7 +113,7 @@ app.use('/:type/:identifier', (req, res) => {
   };
 
   Object.keys(knownLanguages).map(language => {
-    const languageTest = `./public/books/${type}/${identifier}.${language}.json`;
+    const languageTest = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
     if (fs.existsSync(languageTest)) {
       availableLanguages[language] = knownLanguages[language];
     }

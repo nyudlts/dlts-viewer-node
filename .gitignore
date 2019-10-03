@@ -7,8 +7,8 @@ thumbs.db
 !.gitkeep
 public/source
 public/photos
-public/books
 public/manifests
+public/dlts_viewer_content
 public/pages
 public/resources/multivolume
 .env

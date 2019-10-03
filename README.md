@@ -12,9 +12,9 @@ $ yarn install
 
 ## Add content inside the public directory
 
-``` 
+```
 $ cd public
-$ git clone https://github.com/NYULibraries/dlts_viewer_content.git books
+$ git clone --depth 1 https://github.com/NYULibraries/dlts_viewer_content.git dlts_viewer_content
 ```
 
 ## Add the environment file
