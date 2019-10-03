@@ -1,7 +1,7 @@
 import http from 'http';
 import assert from 'assert';
 
-import server from '../lib/index.js';
+import server from '../dist/index.js';
 
 describe('Test Server Status', () => {
   it('should return 200', done => {

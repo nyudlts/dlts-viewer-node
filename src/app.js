@@ -6,6 +6,10 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import axios from 'axios';
 
+const { 
+  log,
+} = console;
+
 dotenv.config();
 
 const IIIFEndpoint = process.env.IIIF_ENDPOINT;
@@ -13,6 +17,8 @@ const IIIFEndpoint = process.env.IIIF_ENDPOINT;
 const IIIFApiVersion = process.env.IIIF_API_VERSION;
 
 const ViewerContentDirectory = process.env.VIEWER_CONTENT_DIRECTORY;
+
+const FileServer = process.env.FILE_SERVER;
 
 const app = express();
 
@@ -29,9 +35,9 @@ app.get('*', (req, res, next) => {
   next();
 });
 
-app.use('/iiif/2/*', (req, res, next) => {
+app.use('/iiif/2/*', (req, res) => {
   const redirectTo = `${IIIFEndpoint}/${IIIFApiVersion}/${req.url}`;
-  console.log(`Redirect ${redirectTo}`);
+  log(`Redirect ${redirectTo}`);
   res.redirect(301, redirectTo);
 });
 
@@ -52,7 +58,7 @@ app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
   try {
     const exists = fs.existsSync(`./public/pages/${identifier}-${sequence}.json`);
     if (exists) {
-      console.log(`File exists. Using cached file ${identifier}-${sequence}.json`);
+      log(`File exists. Using cached file ${identifier}-${sequence}.json`);
       res.json(
         JSON.parse(fs.readFileSync(`./public/pages/${identifier}-${sequence}.json`), 'utf8')
       );
@@ -67,27 +73,29 @@ app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
         'realPageNumber': parseInt(sequence, 10),
       });
 
-      const url = encodeURIComponent(index.cm.uri.replace('fileserver:/', 'http://dlib.nyu.edu/files'));
+      const url = encodeURIComponent(index.cm.uri.replace('fileserver:/', FileServer));
 
       const response = await axios.get(`${IIIFEndpoint}/${IIIFApiVersion}/${url}/info.json`);
 
       fs.writeFile(`./public/pages/${identifier}-${sequence}.json`, JSON.stringify(response.data), err => {
         if (err) {
-          return console.log(err);
+          return log(err);
         }
-        console.log(`File ./public/pages/${identifier}-${sequence}.json saved`);
+        log(`File ./public/pages/${identifier}-${sequence}.json saved`);
       });
 
       res.json(response.data);
 
     }
   } catch (error) {
-    console.log(error);
-    next(createError(500));
+    log(error);
+    res.json({
+      error: 'Error found.',
+    });
   }
 });
 
-app.use('/:type/:identifier', (req, res) => {
+app.use('/:type/:identifier', (req, res, next) => {
 
   const { language = 'en' } = req.query;
 
@@ -166,8 +174,10 @@ app.use('/:type/:identifier', (req, res) => {
     res.json(data);
 
   } catch (error) {
-    console.log(error);
-    next(createError(404));
+    log(error);
+    res.json({
+      error: 'Error found.',
+    });
   }
 });
 
@@ -192,18 +202,22 @@ app.use('/:type', (req, res, next) => {
       throw `Error reading datasource ${type}.json`;
     }
   } catch (error) {
-    console.log(error);
-    next(createError(404));
+    log(error);
+    res.json({
+      error: 'Error found.',
+    });
   }
 });
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
-  next(createError(404));
+  res.json({
+    error: 'Not found.'
+  });
 });
 
 // error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
