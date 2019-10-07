@@ -1,4 +1,6 @@
 .DS_Store
+combined.log
+error.log
 node_modules/
 npm-debug.log
 npm-debug.log.*

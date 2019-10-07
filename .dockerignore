@@ -1,3 +1,14 @@
+.DS_Store
+error.log
+combined.log
 node_modules
 npm-debug.log
+public/dlts_viewer_content
 dlts-viewer-node.code-workspace
+public/source
+public/books/*.json
+public/photos/*.json
+public/maps/*.json
+public/postcards/*.json
+public/pages/*.json
+public/manifests/*.json

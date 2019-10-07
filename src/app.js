@@ -1,14 +1,9 @@
-import createError from 'http-errors';
 import express from 'express';
 import path from 'path';
-import logger from 'morgan';
+import winston from 'winston';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import axios from 'axios';
-
-const { 
-  log,
-} = console;
 
 dotenv.config();
 
@@ -20,9 +15,35 @@ const ViewerContentDirectory = process.env.VIEWER_CONTENT_DIRECTORY;
 
 const FileServer = process.env.FILE_SERVER;
 
-const app = express();
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  defaultMeta: { 
+    service: 'dlts-viewer',
+  },
+  transports: [
+    new winston.transports.File({ 
+      filename: 'error.log', 
+      level: 'error' 
+    }),
+    new winston.transports.File({ 
+      filename: 'combined.log' 
+    })
+  ]
+});
 
-app.use(logger('dev'));
+// If we're not in production then **ALSO** log to the `console`
+// with the colorized simple format.
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }));
+}
+
+const app = express();
 
 app.use(express.json());
 
@@ -37,13 +58,13 @@ app.get('*', (req, res, next) => {
 
 app.use('/iiif/2/*', (req, res) => {
   const redirectTo = `${IIIFEndpoint}/${IIIFApiVersion}/${req.url}`;
-  log(`Redirect ${redirectTo}`);
+  logger.info(`Redirect to ${redirectTo}`);
   res.redirect(301, redirectTo);
 });
 
-app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
-
-  const { 
+app.use('/:type/:identifier/:sequence/info.json', (req, res) => {
+  
+  const {
     language = 'en'
   } = req.query;
 
@@ -53,58 +74,104 @@ app.use('/:type/:identifier/:sequence/info.json', async (req, res, next) => {
     type
   } = req.params;
 
-  const source = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
-
   try {
-    const exists = fs.existsSync(`./public/pages/${identifier}-${sequence}.json`);
+
+    const entitySourcePath = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
+
+    const dataSourcePagePath = `./public/pages/${identifier}-${sequence}.json`;    
+    
+    const exists = fs.existsSync(dataSourcePagePath);
+    
     if (exists) {
-      log(`File exists. Using cached file ${identifier}-${sequence}.json`);
+      logger.info(`File exists. Using cached file ${identifier}-${sequence}.json`);
       res.json(
-        JSON.parse(fs.readFileSync(`./public/pages/${identifier}-${sequence}.json`), 'utf8')
+        JSON.parse(fs.readFileSync(dataSourcePagePath), 'utf8')
       );
-    }
-    else {
+    } else {
+      
+      const requestSequence = parseInt(sequence, 10);
 
-      const data = JSON.parse(fs.readFileSync(source, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(entitySourcePath, 'utf8'));
 
-      const find = require('lodash.find');
+      const sequenceCount = parseInt(data.metadata.sequence_count.value.pop(), 10);
 
-      const index = find(data.pages.page, {
-        'realPageNumber': parseInt(sequence, 10),
-      });
+      if (requestSequence === 0 || requestSequence > sequenceCount) {
+        res.json({
+          error: `Page ${requestSequence} does not exists in requested resource (${identifier}).`
+        });
+      } else {
 
-      const url = encodeURIComponent(index.cm.uri.replace('fileserver:/', FileServer));
+        let out = false;
+       
+        const find = require('lodash.find');
+      
+        const index = find(data.pages.page, {
+          'realPageNumber': parseInt(sequence, 10),
+        });
 
-      const response = await axios.get(`${IIIFEndpoint}/${IIIFApiVersion}/${url}/info.json`);
+        const url = encodeURIComponent(index.cm.uri.replace('fileserver:/', FileServer));
 
-      fs.writeFile(`./public/pages/${identifier}-${sequence}.json`, JSON.stringify(response.data), err => {
-        if (err) {
-          return log(err);
-        }
-        log(`File ./public/pages/${identifier}-${sequence}.json saved`);
-      });
+        logger.info(`Make request: ${IIIFEndpoint}/${IIIFApiVersion}/${url}/info.json`);
 
-      res.json(response.data);
-
+        axios.get(`${IIIFEndpoint}/${IIIFApiVersion}/${url}/info.json`)
+          .then(response => {
+            // logger.info(response.status);
+            // logger.info(response.headers);
+            // logger.info(response.config);
+            out = response.data;
+            res.json(response.data);            
+          })
+          .catch(error => {
+            if (error.response) {
+              logger.error(error.response.data);
+              logger.error(error.response.status);
+              logger.error(error.response.headers);
+            } else if (error.request) {
+              logger.error(error.request);
+            } else {
+              logger.error(error.message);
+            }
+            logger.error(error.config);
+            res.json(error);
+          })
+          .finally(() => {
+            if (out) {
+              fs.writeFile(`./public/pages/${identifier}-${sequence}.json`, JSON.stringify(out), error => {        
+                if (error) {
+                  logger.error(error);
+                  logger.error(`Unable to write file ./public/pages/${identifier}-${sequence}.json`);
+                }
+                else {
+                  logger.info(`File ./public/pages/${identifier}-${sequence}.json saved`);
+                }
+              });
+            }
+          });     
+      }
     }
   } catch (error) {
-    log(error);
+    logger.error(error);
     res.json({
-      error: 'Error found.',
+      error: error,
     });
   }
 });
 
-app.use('/:type/:identifier', (req, res, next) => {
+app.use('/:type/:identifier', (req, res) => {
 
-  const { language = 'en' } = req.query;
+  const {
+    language = 'en'
+  } = req.query;
 
-  const { identifier, type } = req.params;
+  const {
+    identifier,
+    type
+  } = req.params;
 
   const source = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
 
   const availableLanguages = {};
-  
+
   const knownLanguages = {
     en: {
       label: 'English',
@@ -132,7 +199,9 @@ app.use('/:type/:identifier', (req, res, next) => {
     const data = JSON.parse(
       fs.readFileSync(source, 'utf8')
     );
-    
+
+    data.title = data.entity_title.trim();
+
     data.isMultivolume = false;
 
     data.isSeries = false;
@@ -171,17 +240,21 @@ app.use('/:type/:identifier', (req, res, next) => {
 
     delete data.entity_language;
 
+    delete data.entity_title;
+
+    delete data.dlts_book;    
+
     res.json(data);
 
   } catch (error) {
-    log(error);
+    logger.error(error);
     res.json({
-      error: 'Error found.',
+      error: error,
     });
   }
 });
 
-app.use('/:type', (req, res, next) => {
+app.use('/:type', (req, res) => {
   const url = require('url');
   const url_parts = url.parse(req.url, true);
   const query = url_parts.query;
@@ -202,17 +275,17 @@ app.use('/:type', (req, res, next) => {
       throw `Error reading datasource ${type}.json`;
     }
   } catch (error) {
-    log(error);
+    logger.error(error);
     res.json({
-      error: 'Error found.',
+      error: error,
     });
   }
 });
 
 // catch 404 and forward to error handler
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.json({
-    error: 'Not found.'
+    error: '404 Not found.'
   });
 });
 
