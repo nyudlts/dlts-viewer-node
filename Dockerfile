@@ -8,7 +8,7 @@ FROM node:10-alpine
 ARG VIEWER_CONTENT_DIRECTORY=/dlts_viewer_content
 ENV VIEWER_CONTENT_DIRECTORY=$VIEWER_CONTENT_DIRECTORY
 
-VOLUME /dlts_viewer_content
+VOLUME $VIEWER_CONTENT_DIRECTORY
 
 # Create app directory
 WORKDIR /usr/src/app
