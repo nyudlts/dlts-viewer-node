@@ -4,6 +4,11 @@ import winston from 'winston';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import find from 'lodash.find';
+import low from 'lowdb';
+import FileSync from 'lowdb/adapters/FileSync';
+
+const adapterVolumes = new FileSync(`./public/resources/volumes.json`);
 
 dotenv.config();
 
@@ -44,6 +49,8 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const app = express();
+
+app.disable('x-powered-by');
 
 app.use(express.json());
 
@@ -102,8 +109,6 @@ app.use('/:type/:identifier/:sequence/info.json', (req, res) => {
       } else {
 
         let out = false;
-       
-        const find = require('lodash.find');
       
         const index = find(data.pages.page, {
           'realPageNumber': parseInt(sequence, 10),
@@ -178,27 +183,42 @@ app.use('/:type/:identifier', (req, res) => {
       dir: 'ltr',
       code: 'en',
       default: false,
+      spellAs: [
+        'english', 'en',
+      ],
     },
     ar: {
       label: 'العربية',
       dir: 'rtl',
       code: 'ar',
       default: false,
+      spellAs: [
+        'arabic', 
+        'ar', 
+        'ara',
+        'العربية',
+      ],
     }
   };
-
-  Object.keys(knownLanguages).map(language => {
-    const languageTest = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
-    if (fs.existsSync(languageTest)) {
-      availableLanguages[language] = knownLanguages[language];
-    }
-  });
 
   try {
 
     const data = JSON.parse(
       fs.readFileSync(source, 'utf8')
     );
+
+    const langSearchTerm = data.metadata.language.value.pop().toLowerCase();
+    
+    Object.keys(knownLanguages).map(language => {
+      const languageTest = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
+      const result = knownLanguages[language].spellAs.includes(langSearchTerm);
+      if (result) {
+        data.worldDirection = knownLanguages[language].dir;
+      }
+      if (fs.existsSync(languageTest)) {
+        availableLanguages[language] = knownLanguages[language];
+      }
+    });
 
     data.title = data.entity_title.trim();
 
@@ -216,10 +236,7 @@ app.use('/:type/:identifier', (req, res) => {
       volume.title = `${data.entity_title} ${volume.volume_number_str}`;
       volume.bid = data.identifier;
       data.isMultivolume = true;
-      const low = require('lowdb');
-      const FileSync = require('lowdb/adapters/FileSync');
-      const adapter = new FileSync(`./public/resources/volumes.json`);
-      const db = low(adapter);
+      const db = low(adapterVolumes);
       const volumes = db.get('response')
         .filter({ identifier: volume.identifier })
         .value();
@@ -234,6 +251,8 @@ app.use('/:type/:identifier', (req, res) => {
 
     delete data.pages;
 
+    delete data.entity_type;
+
     delete data.multivolume;
 
     delete data.stitched;
@@ -242,7 +261,7 @@ app.use('/:type/:identifier', (req, res) => {
 
     delete data.entity_title;
 
-    delete data.dlts_book;    
+    delete data.dlts_book;
 
     res.json(data);
 
