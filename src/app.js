@@ -50,13 +50,19 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 
-app.disable('x-powered-by');
-
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: false }));
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  dotfiles: 'ignore',
+  etag: false,
+  maxAge: '1d',
+  redirect: false,
+  setHeaders: res => {
+    res.set('x-timestamp', Date.now());
+  },
+}));
 
 app.get('*', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
