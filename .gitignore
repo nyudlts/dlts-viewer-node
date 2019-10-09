@@ -14,6 +14,7 @@ public/manifests
 public/dlts_viewer_content
 public/pages
 public/resources/multivolume
+public/resources/books/*.json
 .env
 dist
 
