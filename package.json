@@ -80,6 +80,8 @@
     }
   },
   "jest": {
+    "verbose": true,
+    "testMatch": ["**/test/*.js?(x)"],
     "testEnvironment": "node"
   },
   "nodemonConfig": {
