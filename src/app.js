@@ -52,16 +52,6 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: false }));
 
-app.use(express.static(path.join(__dirname, 'public'), {
-  dotfiles: 'ignore',
-  etag: false,
-  maxAge: '1d',
-  redirect: false,
-  setHeaders: res => {
-    res.set('x-timestamp', Date.now());
-  },
-}));
-
 app.use('/iiif/2/*', (req, res) => {
   const redirectTo = `${IIIFEndpoint}/${IIIFApiVersion}/${req.originalUrl.replace('/iiif/2/', '')}`;
   logger.info(`Redirect to ${redirectTo}`);
@@ -86,7 +76,7 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
     return res.json({ error: 'Sequence must be a number' });
   }
   try {
-    fs.readFile(`./public/resources/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
+    fs.readFile(`./resources/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
       if (error) {
         // If ENOEN; try to find the source file inside the repository and create cache
         if (error.code === 'ENOENT') {
@@ -125,13 +115,13 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
                   })
                   .finally(() => {
                     if (out) {
-                      fs.writeFile(`./public/resources/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
+                      fs.writeFile(`./resources/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
                         if (error) {
                           logger.error(error);
-                          logger.error(`Unable to write file ./public/resources/pages/${identifier}-${sequence.toString()}.json`);
+                          logger.error(`Unable to write file ./resources/pages/${identifier}-${sequence.toString()}.json`);
                         }
                         else {
-                          logger.info(`File ./public/resources/pages/${identifier}-${sequence.toString()}.json saved`);
+                          logger.info(`File ./resources/pages/${identifier}-${sequence.toString()}.json saved`);
                         }
                       });
                     }
@@ -165,7 +155,7 @@ app.use('/:type/:identifier', (req, res) => {
     identifier,
     type
   } = req.params;
-  fs.readFile(`./public/resources/${type}/${identifier}.${language}.json`, 'utf8', (error, data) => {
+  fs.readFile(`./resources/${type}/${identifier}.${language}.json`, 'utf8', (error, data) => {
     if (error) {
       // If ENOEN; try to find the source file inside the repository and save record
       if (error.code === 'ENOENT') {
@@ -220,7 +210,7 @@ app.use('/:type/:identifier', (req, res) => {
               volume.title = `${data.entity_title} ${volume.volume_number_str}`;
               volume.bid = data.identifier;
               data.isMultivolume = true;
-              const adapterVolumes = new FileSync(`./public/resources/volumes.json`);
+              const adapterVolumes = new FileSync(`./resources/volumes.json`);
               const db = low(adapterVolumes);
               const volumes = db.get('response')
                 .filter({ identifier: volume.identifier })
@@ -240,12 +230,12 @@ app.use('/:type/:identifier', (req, res) => {
             delete data.dlts_book;
             delete data.metadata.representative_image;
             res.json(data);
-            fs.writeFile(`./public/resources/${type}/${identifier}.${language}.json`, JSON.stringify(data), err => {
+            fs.writeFile(`./resources/${type}/${identifier}.${language}.json`, JSON.stringify(data), err => {
               if (err) {
                 logger.error(err);
-                logger.error(`./public/resources/${type}/${identifier}.${language}.json`);
+                logger.error(`./resources/${type}/${identifier}.${language}.json`);
               } else {
-                logger.info(`File ./public/resources/${type}/${identifier}.${language}.json saved`);
+                logger.info(`File ./resources/${type}/${identifier}.${language}.json saved`);
               }
             });
           } catch (err) {
@@ -257,7 +247,7 @@ app.use('/:type/:identifier', (req, res) => {
         });
       }
     } else {
-      logger.info(`File exists. Using cached file ./public/resources/${type}/${identifier}.${language}.json`);
+      logger.info(`File exists. Using cached file ./resources/${type}/${identifier}.${language}.json`);
       res.json(JSON.parse(data, 'utf8'));
     }
   });
@@ -270,7 +260,7 @@ app.use('/:type', (req, res) => {
   const query = url_parts.query;
   const type = req.params.type;
   try {
-    const exists = fs.readFileSync(`./public/resources/${type}.json`);
+    const exists = fs.readFileSync(`./resources/${type}.json`);
     const limit = (query.limit) ? parseInt(query.limit, 10) : 15;
     const start = (query.start) ? parseInt(query.start, 10) : 0;
     const data = JSON.parse(exists, 'utf8');

@@ -84,7 +84,7 @@
   },
   "nodemonConfig": {
     "ignore": [
-      "public/*"
+      "resources/*"
     ]
   }
 }
