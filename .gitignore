@@ -8,13 +8,12 @@ npm-debug.log.*
 *.code-workspace
 thumbs.db
 !.gitkeep
-public/source
-public/photos
-public/manifests
 public/dlts_viewer_content
-public/pages
-public/resources/multivolume
+public/resources/*.json
+public/resources/pages/*.json
+public/resources/multivolume/*.json
 public/resources/books/*.json
+public/resources/manifests/*.json
 .env
 dist
 

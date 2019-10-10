@@ -62,11 +62,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
-app.get('*', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  next();
-});
-
 app.use('/iiif/2/*', (req, res) => {
   const redirectTo = `${IIIFEndpoint}/${IIIFApiVersion}/${req.originalUrl.replace('/iiif/2/', '')}`;
   logger.info(`Redirect to ${redirectTo}`);
@@ -74,34 +69,29 @@ app.use('/iiif/2/*', (req, res) => {
 });
 
 app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
-  
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const {
     language = 'en'
   } = req.query;
-
   const {
     identifier,
     type
   } = req.params;
-
   let {
     sequence
   } = req.params;
-
   if (/^\d+$/.test(sequence)) {
     sequence = parseInt(sequence, 10);
   } else {
-    return res.json({ error: 'Sequence must be a natural number' });
+    return res.json({ error: 'Sequence must be a number' });
   }
-
   try {
-    fs.readFile(`./public/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
+    fs.readFile(`./public/resources/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
       if (error) {
         // If ENOEN; try to find the source file inside the repository and create cache
         if (error.code === 'ENOENT') {
           fs.readFile(`${ViewerContentDirectory}/${type}/${identifier}.${language}.json`, 'utf8', (error, source) => {
-            // file can not be read
-            if (error) {
+            if (error) { // file can not be read
               logger.error(error);
               res.json({ error: error });
             }
@@ -110,7 +100,7 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
               const sequenceCount = parseInt(data.metadata.sequence_count.value.pop(), 10);
               if (sequence === 0 || sequence > sequenceCount) {
                 res.json({
-                  error: `Page ${sequence} does not exists in requested resource (${identifier}).`
+                  error: `Sequence ${sequence} does not exists in requested resource (${identifier}).`
                 });
               } else {
                 let out = false;
@@ -135,13 +125,13 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
                   })
                   .finally(() => {
                     if (out) {
-                      fs.writeFile(`./public/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
+                      fs.writeFile(`./public/resources/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
                         if (error) {
                           logger.error(error);
-                          logger.error(`Unable to write file ./public/pages/${identifier}-${sequence.toString()}.json`);
+                          logger.error(`Unable to write file ./public/resources/pages/${identifier}-${sequence.toString()}.json`);
                         }
                         else {
-                          logger.info(`File ./public/pages/${identifier}-${sequence.toString()}.json saved`);
+                          logger.info(`File ./public/resources/pages/${identifier}-${sequence.toString()}.json saved`);
                         }
                       });
                     }
@@ -153,9 +143,7 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
           logger.error(error.code);
           res.json({ error: error });
         }
-      }
-      // file exists
-      else {
+      } else { // file exists
         logger.info(`File exists. Using cached file ${identifier}-${sequence.toString()}.json`);
         res.json(JSON.parse(data, 'utf8'));
       }
@@ -169,163 +157,114 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
 });
 
 app.use('/:type/:identifier', (req, res) => {
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const {
     language = 'en'
   } = req.query;
-
   const {
     identifier,
     type
   } = req.params;
-
-  const source = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
-  const sourceCache = `./public/resources/${type}/${identifier}.${language}.json`;  
-
-  if (!fs.existsSync(sourceCache)) { // anti-pattern race-condition; fine for now
-
-    try {
-
-      const availableLanguages = {};
-
-      const knownLanguages = {
-        en: {
-          label: 'English',
-          dir: 'ltr',
-          code: 'en',
-          default: false,
-          spellAs: [
-            'english', 'en',
-          ],
-        },
-        ar: {
-          label: 'العربية',
-          dir: 'rtl',
-          code: 'ar',
-          default: false,
-          spellAs: [
-            'arabic', 
-            'ar', 
-            'ara',
-            'العربية',
-          ],
-        }
-      };      
-
-      const data = JSON.parse(
-        fs.readFileSync(source, 'utf8')
-      );
-
-      const langSearchTerm = data.metadata.language.value.pop().toLowerCase();
-    
-      Object.keys(knownLanguages).map(language => {
-        const languageTest = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
-        const result = knownLanguages[language].spellAs.includes(langSearchTerm);
-        if (result) {
-          data.worldDirection = knownLanguages[language].dir;
-        }
-        if (fs.existsSync(languageTest)) {
-          availableLanguages[language] = knownLanguages[language];
-        }
-      });
-
-      data.title = data.entity_title.trim();
-
-      data.isMultivolume = false;
- 
-      data.isSeries = false;
-
-      data.status = parseInt(data.entity_status, 10);
-
-      data.volumes = [];
-
-      data.volumes = [];
-
-
-      if (data.metadata.pdf_file && Array.isArray(data.metadata.pdf_file.value)) {
-        data.metadata.pdf_file.value.forEach((value, index) => {
-          data.metadata.pdf_file.value[index] = {
-            kind: '',
-            url: data.metadata.pdf_file.value[index].replace('fileserver:/', FileServer),
-          };
+  fs.readFile(`./public/resources/${type}/${identifier}.${language}.json`, 'utf8', (error, data) => {
+    if (error) {
+      // If ENOEN; try to find the source file inside the repository and save record
+      if (error.code === 'ENOENT') {
+        fs.readFile(`${ViewerContentDirectory}/${type}/${identifier}.${language}.json`, 'utf8', (error, source) => {
+          try {
+            const data = JSON.parse(source);
+            const availableLanguages = {};
+            const knownLanguages = require('./lib/knownLanguages.js');
+            const langSearchTerm = data.metadata.language.value.pop().toLowerCase();
+            Object.keys(knownLanguages).map(language => {
+              const languageTest = `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`;
+              const result = knownLanguages[language].spellAs.includes(langSearchTerm);
+              // DLTS Viewer represent the requested object metadata in
+              // the language requested and the resource is render to be
+              // display in the source object viewing direction.
+              // worldDirection can be use to display the source object in the
+              // correct viewing direction.
+              if (result) {
+                data.worldDirection = knownLanguages[language].dir;
+              }
+              // Find if the requested object has multiple languages
+              // and add them to the availableLanguages property.
+              if (fs.existsSync(languageTest)) {
+                availableLanguages[language] = knownLanguages[language];
+              }
+            });
+            data.title = data.entity_title.trim();
+            data.isMultivolume = false;
+            data.isSeries = false;
+            data.status = parseInt(data.entity_status, 10);
+            data.volumes = [];
+            data.volumes = [];
+            if (data.metadata.pdf_file && Array.isArray(data.metadata.pdf_file.value)) {
+              data.metadata.pdf_file.value.forEach((value, index) => {
+                data.metadata.pdf_file.value[index] = {
+                  kind: '',
+                  url: data.metadata.pdf_file.value[index].replace('fileserver:/', FileServer),
+                };
+              });
+            }
+            if (
+              data.metadata.representative_image && 
+              data.metadata.representative_image.cm &&
+              data.metadata.representative_image.cm.uri) {
+                const ri = data.metadata.representative_image.cm.uri.replace('fileserver:/', FileServer);
+                data.representativeImage = ri;
+                data.thumbnail = `${req.protocol}://${req.get('host')}/iiif/2/${encodeURIComponent(ri)}/full/150,/0/default.jpg`;          
+            }
+            if (data.multivolume && Array.isArray(data.multivolume.volume)) {
+              let volume = {};
+              volume = data.multivolume.volume.pop();
+              volume.title = `${data.entity_title} ${volume.volume_number_str}`;
+              volume.bid = data.identifier;
+              data.isMultivolume = true;
+              const adapterVolumes = new FileSync(`./public/resources/volumes.json`);
+              const db = low(adapterVolumes);
+              const volumes = db.get('response')
+                .filter({ identifier: volume.identifier })
+                .value();
+              data.volumes = volumes;
+            }
+            availableLanguages[language].default = true;
+            data.availableLanguages = availableLanguages;
+            data.language = availableLanguages[language];
+            delete data.pages;
+            delete data.entity_type;
+            delete data.entity_status;
+            delete data.multivolume;
+            delete data.stitched;
+            delete data.entity_language;
+            delete data.entity_title;
+            delete data.dlts_book;
+            delete data.metadata.representative_image;
+            res.json(data);
+            fs.writeFile(`./public/resources/${type}/${identifier}.${language}.json`, JSON.stringify(data), err => {
+              if (err) {
+                logger.error(err);
+                logger.error(`./public/resources/${type}/${identifier}.${language}.json`);
+              } else {
+                logger.info(`File ./public/resources/${type}/${identifier}.${language}.json saved`);
+              }
+            });
+          } catch (err) {
+            logger.error(err);
+            res.json({
+              error: err,
+            });
+          }
         });
       }
-
-      if (
-        data.metadata.representative_image && 
-        data.metadata.representative_image.cm &&
-        data.metadata.representative_image.cm.uri) {
-          const ri = data.metadata.representative_image.cm.uri.replace('fileserver:/', FileServer);
-          data.representativeImage = ri;
-          data.thumbnail = `${req.protocol}://${req.get('host')}/iiif/2/${encodeURIComponent(ri)}/full/150,/0/default.jpg`;          
-      }
-
-      if (data.multivolume && Array.isArray(data.multivolume.volume)) {
-        let volume = {};
-        volume = data.multivolume.volume.pop();
-        volume.title = `${data.entity_title} ${volume.volume_number_str}`;
-        volume.bid = data.identifier;
-        data.isMultivolume = true;
-        const adapterVolumes = new FileSync(`./public/resources/volumes.json`);
-        const db = low(adapterVolumes);
-        const volumes = db.get('response')
-          .filter({ identifier: volume.identifier })
-          .value();
-        data.volumes = volumes;
-      }
-
-      availableLanguages[language].default = true;
-
-      data.availableLanguages = availableLanguages;
-
-      data.language = availableLanguages[language];
-
-      delete data.pages;
-
-      delete data.entity_type;
-
-      delete data.entity_status;
-
-      delete data.multivolume;
-
-      delete data.stitched;
-
-      delete data.entity_language;
-
-      delete data.entity_title;
-
-      delete data.dlts_book;
-
-      delete data.metadata.representative_image;
-
-      res.json(data);
-
-      fs.writeFile(`./public/resources/${type}/${identifier}.${language}.json`, JSON.stringify(data), error => {
-        if (error) {
-          logger.error(error);
-          logger.error(`./public/resources/${type}/${identifier}.${language}.json`);
-        }
-        else {
-          logger.info(`File ./public/resources/${type}/${identifier}.${language}.json saved`);
-        }
-      });
-
-    } catch (error) {
-      logger.error(error);
-      res.json({
-        error: error,
-      });
+    } else {
+      logger.info(`File exists. Using cached file ./public/resources/${type}/${identifier}.${language}.json`);
+      res.json(JSON.parse(data, 'utf8'));
     }
-  }
-  else {
-    logger.info(`File exists. Using cached file ${sourceCache}`);
-    res.json(JSON.parse(
-      fs.readFileSync(sourceCache, 'utf8')
-    ));
-  }
+  });
 });
 
 app.use('/:type', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const url = require('url');
   const url_parts = url.parse(req.url, true);
   const query = url_parts.query;
@@ -345,10 +284,10 @@ app.use('/:type', (req, res) => {
     } else {
       throw `Error reading datasource ${type}.json`;
     }
-  } catch (error) {
-    logger.error(error);
+  } catch (err) {
+    logger.error(err);
     res.json({
-      error: error,
+      error: err,
     });
   }
 });
