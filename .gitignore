@@ -10,10 +10,12 @@ thumbs.db
 !.gitkeep
 public/dlts_viewer_content
 public/resources/*.json
+public/resources/maps/*.json
+public/resources/photos/*.json
 public/resources/pages/*.json
 public/resources/multivolume/*.json
+public/resources/series/*.json
 public/resources/books/*.json
 public/resources/manifests/*.json
 .env
 dist
-
