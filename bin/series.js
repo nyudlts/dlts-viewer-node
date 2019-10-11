@@ -6,7 +6,9 @@ function action () {
 
   const dotenv = require('dotenv');
 
-  dotenv.config();
+  const {
+    SingleBar
+  } = require('cli-progress');
 
   const {
     parse, stringify
@@ -21,11 +23,20 @@ function action () {
     response: []
   };
 
+  const b1 = new SingleBar({
+    format: 'Progress {identifier} {bar} | {percentage}% || {value}/{total}',
+    hideCursor: true
+  });
+
+  dotenv.config();
+
   try {
 
     const books = parse(
       readFileSync('./resources/books.json', 'utf8')
     );
+
+    b1.start(books.response.length, 0, {});
 
     for (let book of books.response) {
 
@@ -39,11 +50,15 @@ function action () {
 
       if (series.length) {
         for (let item of series) {
-          console.log(item);  
+          // console.log(item);
         }
       }
 
+      b1.increment();
+
     }
+
+    b1.stop();
 
   } catch (err) {
     console.log(err);
@@ -53,3 +68,5 @@ function action () {
 }
 
 action();
+
+process.exit(1);

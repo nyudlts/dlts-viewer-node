@@ -3,12 +3,16 @@
 // Usage example:
 // $ VIEWER_CONTENT_DIRECTORY=/dlts_viewer_content ./bin/books.js
 function action () {
-
-  const { sync } = require('glob');
-
+  
   const dotenv = require('dotenv');
 
-  dotenv.config();
+  const { 
+    sync 
+  } = require('glob');
+
+  const { 
+    SingleBar
+  } = require('cli-progress');
 
   const {
     stringify
@@ -23,9 +27,18 @@ function action () {
     response: []
   };
 
+  const b1 = new SingleBar({
+    format: 'Creating file ./resources/books.json {bar} | {percentage}% || {value}/{total}',
+    hideCursor: true
+  });
+
+  dotenv.config();  
+
   try {
 
     const files = sync(`${process.env.VIEWER_CONTENT_DIRECTORY}/books/*.en.json`);
+
+    b1.start(files.length, 0, {});
 
     for (const file of files) {
 
@@ -44,6 +57,8 @@ function action () {
         identifier: identifier,
       });
 
+      b1.increment();
+
     }
 
     writeFileSync(`./resources/books.json`, stringify(books));
@@ -55,3 +70,5 @@ function action () {
 }
 
 action();
+
+process.exit(0);
