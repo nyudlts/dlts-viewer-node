@@ -42,9 +42,32 @@ $ yarn run first-run
 ```
 
 ### Run the development server
+
 ```
 $ yarn run dev
 ```
+
+### Broswe the development server content
+
+Resources request http://localhost:3000/:resource
+
+Show all the books. Use query arguments `start` specifies an offset (by default, 0) into the responses and `limit` to controls how many rows of responses are displayed at a time (default value: 15)
+
+e.g., http://localhost:3000/books
+
+Resource request:
+
+http://localhost:3000/:resource/:identifier
+
+TODO: Write documentation
+
+e.g., http://localhost:3000/books/aub_aco000011
+
+http://localhost:3000/:resource/:identifier/:sequence/info.json
+
+TODO: Write documentation
+
+e.g., http://localhost:3000/books/aub_aco000011/1/info.json
 
 ### Cache
 
@@ -62,3 +85,7 @@ Cantaloupe IIIF server - https://github.com/MITLibraries/docker-cantaloupe.git c
 DLTS Viewer content - https://github.com/NYULibraries/dlts_viewer_content
 
 Yarn - https://yarnpkg.com/lang/en/
+
+NodeJS (at least 10.16.3 LTS) - https://nodejs.org/en/
+
+A little bit of JavaScript knowledge won't hurt - https://developer.mozilla.org/en-US/docs/Web/JavaScript/A_re-introduction_to_JavaScript
