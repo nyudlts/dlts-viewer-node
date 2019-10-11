@@ -1,6 +1,6 @@
 # See https://nodejs.org/en/docs/guides/nodejs-docker-webapp
 # docker build -t dismorfo/dlts-viewer-node .
-# docker run -d --env-file ./.env -p 3000:3000 --name viewer -v $(pwd)/public/dlts_viewer_content:/dlts_viewer_content dismorfo/dlts-viewer-node
+# docker run -d --env-file ./.env.docker -p 3000:3000 --name viewer -v /Users/ortiz/tools/dlts_viewer_content:/dlts_viewer_content dismorfo/dlts-viewer-node
 # If running without Docker:
 # $ VIEWER_CONTENT_DIRECTORY=$(pwd)/public/dlts_viewer_content yarn start
 # If you want access to bash use node:10 instead of node:10-alpine and then run $ docker exec -i -t viewer /bin/bash

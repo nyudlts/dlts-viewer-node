@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Usage example:
-// $ VIEWER_CONTENT_DIRECTORY=/dlts_viewer_content ./bin/clean_cache.js
+// $ ./bin/clean_cache.js
 function action () {
 
   const dotenv = require('dotenv');

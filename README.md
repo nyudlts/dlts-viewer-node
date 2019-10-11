@@ -1,8 +1,14 @@
-# DLTS Viewer - Node
+## DLTS Viewer - Node
 
-DLTS Viewer dummy server for local development. Not production quality. Do not use for any other reason.
+DLTS Viewer dummy server for local development. **Not production quality**.
 
-## Install 
+### Download/Clone DLTS Viewer content
+
+```
+$ git clone --depth 1 https://github.com/NYULibraries/dlts_viewer_content.git dlts_viewer_content
+```
+
+### Install server
 
 ``` 
 $ git clone https://github.com/nyudlts/dlts-viewer-node.git
@@ -10,22 +16,22 @@ $ cd dlts-viewer-node
 $ yarn install
 ```
 
-## Add content inside the public directory
-
-```
-$ cd public
-$ git clone --depth 1 https://github.com/NYULibraries/dlts_viewer_content.git dlts_viewer_content
-```
-
-## Add the environment file
+### Add environment file
 
 ``` 
 cp .env.example .env
 ```
 
-Here you have to add Cantaloupe IIIF server endpoint. See .env.example
+You need to set environmental variables:
 
-## Run the development server
+- IIIF_ENDPOINT
+- IIIF_API_VERSION
+- FILE_SERVER
+- VIEWER_CONTENT_DIRECTORY
+
+View the example file `.env.example`.
+
+### Run the development server
 ```
 $ yarn run dev
 ```
