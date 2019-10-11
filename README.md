@@ -2,13 +2,13 @@
 
 DLTS Viewer dummy server for local development. **Not production quality**.
 
-### Download/Clone DLTS Viewer content
+### Get DLTS Viewer content
 
 ```
 $ git clone --depth 1 https://github.com/NYULibraries/dlts_viewer_content.git dlts_viewer_content
 ```
 
-### Install server
+### Install development server
 
 ``` 
 $ git clone https://github.com/nyudlts/dlts-viewer-node.git
@@ -31,9 +31,28 @@ You need to set environmental variables:
 
 View the example file `.env.example`.
 
+### First run
+
+Before you run the server for the first time you have to create the files `./resources/books.json` and `./resources/volumes.json`.
+
+To do so you can run `$ yarn run first-run` inside the root of the project directory.
+
+```
+$ yarn run first-run
+```
+
 ### Run the development server
 ```
 $ yarn run dev
+```
+
+### Cache
+
+The server works using cache files create on first request. To clean the cache use the provided script
+`$ yarn run clean-cache` inside the root of the project directory.
+
+```
+$ yarn run clean-cache
 ```
 
 ### Requierments 
