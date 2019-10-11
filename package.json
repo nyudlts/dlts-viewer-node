@@ -12,7 +12,8 @@
     "lint": "esw -w src test",
     "build-books-source": "node bin/books.js",
     "build-volumes-source": "node bin/volumes.js",
-    "first-run": "npm run-script build-books-source && npm run-script build-volumes-source"
+    "first-run": "npm run-script build-books-source && npm run-script build-volumes-source",
+    "clean-cache": "node bin/clean_cache.js && npm run-script first-run"
   },
   "dependencies": {
     "@babel/cli": "^7.6.2",

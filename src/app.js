@@ -43,7 +43,8 @@ if (process.env.NODE_ENV !== 'production') {
       winston.format.colorize(),
       winston.format.simple()
     )
-  }));
+   })
+  );
 }
 
 const app = express();
