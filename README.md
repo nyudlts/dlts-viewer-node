@@ -24,10 +24,10 @@ cp .env.example .env
 
 You need to set environmental variables:
 
-- IIIF_ENDPOINT
-- IIIF_API_VERSION
-- FILE_SERVER
-- VIEWER_CONTENT_DIRECTORY
+- IIIF_ENDPOINT - Cantaloupe IIIF server base path
+- IIIF_API_VERSION - IIIF version
+- FILE_SERVER - Server that serve the image
+- VIEWER_CONTENT_DIRECTORY - The realpath containing DLTS Viewer content repository
 
 View the example file `.env.example`.
 
@@ -58,3 +58,7 @@ $ yarn run clean-cache
 ### Requierments 
 
 Cantaloupe IIIF server - https://github.com/MITLibraries/docker-cantaloupe.git configured to use HttpSource.
+
+DLTS Viewer content - https://github.com/NYULibraries/dlts_viewer_content
+
+Yarn - https://yarnpkg.com/lang/en/
