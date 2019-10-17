@@ -5,6 +5,10 @@ const { PORT = 3000 } = process.env;
 
 const debug = require('debug')('dlts-viewer-node:server');
 
+const ssl = !!process.env.SSL;
+
+const protocol = ssl ? 'https://' : 'http://';
+
 /**
  * Normalize a port into a number, string, or false.
  */
@@ -53,9 +57,18 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 function onListening() {
-  const addr = server.address();
-  const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-  debug(`Listening on ${bind}`);
+  const {
+    networkInterfaces,
+  } = require('os');
+  const ifaces = networkInterfaces();
+  console.info(`Listening on: `);
+  Object.keys(ifaces).forEach(dev => {
+    ifaces[dev].forEach(details => {
+      if (details.family === 'IPv4') {
+        console.info(('   ' + protocol + details.address + ':' + port));
+      }
+    });
+  });
 }
 
 /**
