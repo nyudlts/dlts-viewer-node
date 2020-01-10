@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prestart": "npm run -s build",
-    "start": "node dist/index.js --trace-sync-io",
+    "start": "node dist/index.js --trace-sync-io --require 'dotenv/config'",
     "dev": "nodemon src/index.js --exec \"node --require 'dotenv/config' --require '@babel/register'\"",
     "clean": "rimraf dist",
     "build": "npm run clean && mkdir -p dist && babel src -s -D -d dist",
