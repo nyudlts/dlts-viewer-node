@@ -6,7 +6,7 @@ function action () {
 
   const dotenv = require('dotenv');
 
-  const { 
+  const {
     SingleBar
   } = require('cli-progress');  
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import path from 'path';
+import compression from 'compression';
 import winston from 'winston';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -15,6 +15,8 @@ const IIIFEndpoint = process.env.IIIF_ENDPOINT;
 const IIIFApiVersion = process.env.IIIF_API_VERSION;
 
 const ViewerContentDirectory = process.env.VIEWER_CONTENT_DIRECTORY;
+
+const ViewerResourcesDirectory = process.env.VIEWER_RESOURCES_DIRECTORY;
 
 const FileServer = process.env.FILE_SERVER;
 
@@ -49,6 +51,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 
+app.use(compression());
+
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: false }));
@@ -74,23 +78,23 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
   if (/^\d+$/.test(sequence)) {
     sequence = parseInt(sequence, 10);
   } else {
-    return res.json({ error: 'Sequence must be a number' });
+    return res.status(400).json({ error: 'Sequence must be a number' });
   }
   try {
-    fs.readFile(`./resources/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
+    fs.readFile(`${ViewerResourcesDirectory}/pages/${identifier}-${sequence}.json`, 'utf8', (error, data) => {
       if (error) {
         // If ENOEN; try to find the source file inside the repository and create cache
         if (error.code === 'ENOENT') {
           fs.readFile(`${ViewerContentDirectory}/${type}/${identifier}.${language}.json`, 'utf8', (error, source) => {
             if (error) { // file can not be read
               logger.error(error);
-              res.json({ error: error });
+              res.status(404).json({ error: error });
             }
             else {
               const data = JSON.parse(source, 'utf8');
               const sequenceCount = parseInt(data.metadata.sequence_count.value.pop(), 10);
               if (sequence === 0 || sequence > sequenceCount) {
-                res.json({
+                res.status(404).json({
                   error: `Sequence ${sequence} does not exists in requested resource (${identifier}).`
                 });
               } else {
@@ -116,13 +120,13 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
                   })
                   .finally(() => {
                     if (out) {
-                      fs.writeFile(`./resources/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
+                      fs.writeFile(`${ViewerResourcesDirectory}/pages/${identifier}-${sequence.toString()}.json`, JSON.stringify(out), error => {
                         if (error) {
                           logger.error(error);
-                          logger.error(`Unable to write file ./resources/pages/${identifier}-${sequence.toString()}.json`);
+                          logger.error(`Unable to write file ${ViewerResourcesDirectory}/pages/${identifier}-${sequence.toString()}.json`);
                         }
                         else {
-                          logger.info(`File ./resources/pages/${identifier}-${sequence.toString()}.json saved`);
+                          logger.info(`File ${ViewerResourcesDirectory}/pages/${identifier}-${sequence.toString()}.json saved`);
                         }
                       });
                     }
@@ -132,7 +136,7 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
           });
         } else {
           logger.error(error.code);
-          res.json({ error: error });
+          res.status(400).json({ error: error });
         }
       } else { // file exists
         logger.info(`File exists. Using cached file ${identifier}-${sequence.toString()}.json`);
@@ -141,7 +145,7 @@ app.get('/:type/:identifier/:sequence/info.json', (req, res) => {
     });
   } catch (error) {
     logger.error(error);
-    res.json({
+    res.status(400).json({
       error: error,
     });
   }
@@ -156,10 +160,11 @@ app.use('/:type/:identifier', (req, res) => {
     identifier,
     type
   } = req.params;
-  fs.readFile(`./resources/${type}/${identifier}.${language}.json`, 'utf8', (error, data) => {
+  fs.readFile(`${ViewerResourcesDirectory}/${type}/${identifier}.${language}.json`, 'utf8', (error, data) => {
     if (error) {
       // If ENOEN; try to find the source file inside the repository and save record
       if (error.code === 'ENOENT') {
+        console.log('Try to find the source file inside the repository and save record')
         fs.readFile(`${ViewerContentDirectory}/${type}/${identifier}.${language}.json`, 'utf8', (error, source) => {
           try {
             const data = JSON.parse(source);
@@ -211,7 +216,7 @@ app.use('/:type/:identifier', (req, res) => {
               volume.title = `${data.entity_title} ${volume.volume_number_str}`;
               volume.bid = data.identifier;
               data.isMultivolume = true;
-              const adapterVolumes = new FileSync(`./resources/volumes.json`);
+              const adapterVolumes = new FileSync(`${ViewerResourcesDirectory}/volumes.json`);
               const db = low(adapterVolumes);
               const volumes = db.get('response')
                 .filter({ identifier: volume.identifier })
@@ -231,24 +236,30 @@ app.use('/:type/:identifier', (req, res) => {
             delete data.dlts_book;
             delete data.metadata.representative_image;
             res.json(data);
-            fs.writeFile(`./resources/${type}/${identifier}.${language}.json`, JSON.stringify(data), err => {
+            fs.writeFile(`${ViewerResourcesDirectory}/${type}/${identifier}.${language}.json`, JSON.stringify(data), err => {
               if (err) {
                 logger.error(err);
-                logger.error(`./resources/${type}/${identifier}.${language}.json`);
+                logger.error(`${ViewerResourcesDirectory}/${type}/${identifier}.${language}.json`);
               } else {
-                logger.info(`File ./resources/${type}/${identifier}.${language}.json saved`);
+                logger.info(`File ${ViewerResourcesDirectory}/${type}/${identifier}.${language}.json saved`);
               }
             });
           } catch (err) {
-            logger.error(err);
-            res.json({
-              error: err,
+            logger.error(err.toString());
+            res.status(404).json({
+              error: {
+                type: type,
+                identifier: identifier,
+                language: language,
+                diskPath: `${ViewerContentDirectory}/${type}/${identifier}.${language}.json`,
+                message: err.toString()
+              }
             });
           }
         });
       }
     } else {
-      logger.info(`File exists. Using cached file ./resources/${type}/${identifier}.${language}.json`);
+      logger.info(`File exists. Using cached file ${ViewerResourcesDirectory}/${type}/${identifier}.${language}.json`);
       res.json(JSON.parse(data, 'utf8'));
     }
   });
@@ -261,7 +272,7 @@ app.use('/:type', (req, res) => {
   const query = url_parts.query;
   const type = req.params.type;
   try {
-    const exists = fs.readFileSync(`./resources/${type}.json`);
+    const exists = fs.readFileSync(`${ViewerResourcesDirectory}/${type}.json`);
     const limit = (query.limit) ? parseInt(query.limit, 10) : 15;
     const start = (query.start) ? parseInt(query.start, 10) : 0;
     const data = JSON.parse(exists, 'utf8');
@@ -271,13 +282,13 @@ app.use('/:type', (req, res) => {
         length: data.response.length,
         start: start,
         limit: limit,
-      });  
+      });
     } else {
       throw `Error reading datasource ${type}.json`;
     }
   } catch (err) {
     logger.error(err);
-    res.json({
+    res.status(400).json({
       error: err,
     });
   }
@@ -285,7 +296,7 @@ app.use('/:type', (req, res) => {
 
 // catch 404 and forward to error handler
 app.use((req, res) => {
-  res.json({
+  res.status(404).json({
     error: '404 Not found.'
   });
 });
